@@ -11,12 +11,39 @@ type Motto interface {
     currentModule *Module
 }
 
-func (motto *Motto) RunModule(moduleFile string) (otto.Value, error) {
-        
+func (motto *Motto) Require(moduleFile string) (otto.Value, error) {
+
+    // before
+    // exec
+    // after
 }
 
-func (motto *Motto) Inject() {
-    motto.Set("require", func(call otto.FunctionCall) otto.Value {
+func (motto *Motto) NewModule(moduleFile) (*Module) {
+    return &Module {
+        Id: moduleFile,
+        Filename: moduleFile,
+        vm: motto,
+    }
+}
+
+
+type Module struct {
+    Id string
+    Filename string
+    Loaded bool
+    vm *Motto
+    // Parent *Module
+    // Children []*Module
+    Value otto.Value // module return value
+    ModuleValue otto.Object // the module variable in js
+}
+
+func (m *Module) ToJavascriptModule() {
+    // module
+    module := otto.Object {}
+    
+    // require
+    require := func(call otto.FunctionCall) otto.Value {
         filename, err := call.Argument(0).ToString()
         if err != nil || filename == "" || !strings.HasSuffix(strings.ToLower(filename), ".js") {
             return otto.UndefinedValue()
@@ -65,20 +92,67 @@ func (motto *Motto) Inject() {
 
 
         currentModule.Filename
+    }
 
-
-
-
-    })
+    // exports
 }
 
-type Module struct {
-    Id string
-    Filename string
-    Loaded bool
-    // Parent *Module
-    // Children []*Module
-    Value otto.Value
+func (this *Module) Require(filename string) (otto.Value, error) {
+    absModulePath, err := this.resolvePath(filename)
+    if err != nil {
+        return err
+    }
+
+    existModule, ok = this.vm.modules[absModulePath]
+    if ok {
+        if existModule.Loaded {
+            return existModule.Value, nil
+        } else {
+            return nil, errors.New("Circle module dependencies detected")
+        }
+    }
+
+    module = &Module {
+        Id: absModulePath,
+        Filename: absModulePath,
+        vm: this.motto,
+    }
+
+    this.vm.modules[absModulePath] = module
+
+    // execute module
+    moduleSource, err := ioutil.ReadFile(absModulePath)
+
+    if err != nil {
+        return nil, err
+    }
+
+    moduleSource =  
+    
+    module.Loaded = true
+    module.Value = value
+
+    return module.Value, nil
+}
+
+func (this *Module) resolvePath(filename string) (string, error) {
+    if !filepath.IsAbs(filename) {
+        filename, err := filepath.Join(this.Filename, filename)
+        if err != nil {
+            return "", err
+        }
+    }
+
+    return filename
+}
+
+func MainModule(file string) *Module {
+    fileAbs, err := filepath.Abs(file)
+    if err != nil {
+        panic(fmt.Printf("Path %s can not be resolved"))
+    }
+
+    return NewModule(fileAbs)
 }
 
 func NewModule(moduleFile string) *Module {
@@ -88,7 +162,7 @@ func NewModule(moduleFile string) *Module {
     }
 }
 
-func Run(moduleFile string) (*Motto, otto.Value, error) {
+func Run(file string) (*Motto, otto.Value, error) {
     otto := New()
     value, err := otto.RunModule(moduleFile)
 
