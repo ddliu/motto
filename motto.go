@@ -1,31 +1,48 @@
+// Copyright 2014 dong<ddliuhb@gmail.com>.
+// Licensed under the MIT license.
+// 
+// Motto - Modular otto
+// 
+// Motto wraps otto to provide a Nodejs like module environment.
 package motto
 
 import (
     "github.com/robertkrimen/otto"
-    "strings"
+    "errors"
+    "io/ioutil"
+    "path/filepath"
 )
 
-type Motto interface {
-    otto.Otto
+type Motto struct {
+    *otto.Otto
     modules map[string]*Module
-    currentModule *Module
 }
 
-func (motto *Motto) Require(moduleFile string) (otto.Value, error) {
-
-    // before
-    // exec
-    // after
-}
-
-func (motto *Motto) NewModule(moduleFile) (*Module) {
-    return &Module {
-        Id: moduleFile,
-        Filename: moduleFile,
-        vm: motto,
+// Run a js file as a module
+func (this *Motto) RunModule(filename string) (otto.Value, error) {
+    module := &Module {
+        Id: ".",
+        Filename: ".",
+        vm: this,
     }
+
+    return module.Require(filename)
 }
 
+// Get a loaded module by filename.
+func (this *Motto) GetModule(filename string) (*Module, bool) {
+    module, ok := this.modules[filename]
+    return module, ok
+}
+
+// Add a new module to current vm.
+func (this *Motto) AddModule(filename string, module *Module) {
+    if this.modules == nil {
+        this.modules = make(map[string]*Module)
+    }
+
+    this.modules[filename] = module
+}
 
 type Module struct {
     Id string
@@ -35,136 +52,103 @@ type Module struct {
     // Parent *Module
     // Children []*Module
     Value otto.Value // module return value
-    ModuleValue otto.Object // the module variable in js
 }
 
-func (m *Module) ToJavascriptModule() {
-    // module
-    module := otto.Object {}
-    
-    // require
-    require := func(call otto.FunctionCall) otto.Value {
-        filename, err := call.Argument(0).ToString()
-        if err != nil || filename == "" || !strings.HasSuffix(strings.ToLower(filename), ".js") {
-            return otto.UndefinedValue()
-        }
-
-        currentModule = motto.currentModule
-
-        if !filepath.IsAbs(filename) {
-            filename, err = filepath.Abs(filepath.Join(filepath.Dir(currentModule.Filename), filename))
-            if err != nil {
-                return otto.UndefinedValue()
-            }
-
-            existModule, ok := motto.modules[filename]
-            // exist
-            if ok {
-                // Circle reference
-                if !existModule.Loaded {
-                    panic(call.Otto.Call("new Error", nil, "Circle module reference detected"))
-                } else {
-                    return existModule.Value
-                }
-            }
-
-        }
-
-        f, err := ioutil.ReadFile(filename)
-        if err == nil {
-            panic(call.Otto.Call("new Error", nil, fmt.Sprintf("Module file cannot be read: %s", filename)))
-        }
-
-        v, err := call.Otto.Run(f)
-
-        module := &Module {
-            Id: filename,
-            Filename: filename,
-            Loaded: false,
-        }
-
-        motto.modules[filename] = module
-
-        motto.currentModule = module
-
-
-        call.Otto.run()
-
-
-        currentModule.Filename
-    }
-
-    // exports
-}
-
+// Load another module by filename
 func (this *Module) Require(filename string) (otto.Value, error) {
     absModulePath, err := this.resolvePath(filename)
     if err != nil {
-        return err
+        return otto.UndefinedValue(), err
     }
 
-    existModule, ok = this.vm.modules[absModulePath]
+    existModule, ok := this.vm.GetModule(absModulePath)
     if ok {
         if existModule.Loaded {
             return existModule.Value, nil
         } else {
-            return nil, errors.New("Circle module dependencies detected")
+            return otto.UndefinedValue(), errors.New("Circle module dependencies detected")
         }
     }
 
-    module = &Module {
+    module := &Module {
         Id: absModulePath,
         Filename: absModulePath,
-        vm: this.motto,
+        vm: this.vm,
     }
 
-    this.vm.modules[absModulePath] = module
+    this.vm.AddModule(absModulePath, module)
 
     // execute module
     moduleSource, err := ioutil.ReadFile(absModulePath)
 
     if err != nil {
-        return nil, err
+        return otto.UndefinedValue(), err
     }
 
-    moduleSource =  
-    
+    moduleSource = append([]byte("(function(module) {var require = module.require;var exports = module.exports;\n"), moduleSource...)
+    moduleSource = append(moduleSource, []byte("\n})")...)
+
+    // Provide the "require" method in the module scope.
+    jsRequire := func(call otto.FunctionCall) otto.Value {
+        jsModuleFilename := call.Argument(0).String()
+
+        moduleValue, err := module.Require(jsModuleFilename)
+        if err != nil {
+            jsException(this.vm, "Error", "motto: " + err.Error())
+        }
+
+        return moduleValue
+    }
+
+    jsModule, _ := this.vm.Object(`({exports: {}})`)
+    jsModule.Set("require", jsRequire)
+    jsExports, _ := jsModule.Get("exports")
+
+    // Run the module source, with "jsModule" as the "module" varaible, "jsExports" as "this"(Nodejs capable).
+    moduleReturn, err := this.vm.Call(string(moduleSource), jsExports, jsModule)
+    if err != nil {
+        return otto.UndefinedValue(), err
+    }
+
+    var moduleValue otto.Value
+    if !moduleReturn.IsUndefined() {
+        moduleValue = moduleReturn
+        jsModule.Set("exports", moduleValue)
+    } else {
+        moduleValue, _ = jsModule.Get("exports")
+    }
     module.Loaded = true
-    module.Value = value
+    module.Value = moduleValue
 
     return module.Value, nil
 }
 
+// Get absolute path of another module
 func (this *Module) resolvePath(filename string) (string, error) {
+    var err error
     if !filepath.IsAbs(filename) {
-        filename, err := filepath.Join(this.Filename, filename)
-        if err != nil {
-            return "", err
+        filename = filepath.Join(filepath.Dir(this.Filename), filename)
+        if !filepath.IsAbs(filename) {
+            filename, err = filepath.Abs(filename)
+            if err != nil {
+                return "", err
+            }
         }
     }
 
-    return filename
+    return filename, nil
 }
 
-func MainModule(file string) *Module {
-    fileAbs, err := filepath.Abs(file)
-    if err != nil {
-        panic(fmt.Printf("Path %s can not be resolved"))
-    }
+// Run javascript file in the motto module environment.
+func Run(filename string) (*Motto, otto.Value, error) {
+    vm := &Motto {otto.New(), nil}
+    v, err := vm.RunModule(filename)
 
-    return NewModule(fileAbs)
+    return vm, v, err
 }
 
-func NewModule(moduleFile string) *Module {
-    return &Module {
-        Id: moduleFile,
-        Filename: moduleFile,
-    }
-}
-
-func Run(file string) (*Motto, otto.Value, error) {
-    otto := New()
-    value, err := otto.RunModule(moduleFile)
-
-    return otto, value, err
+// Throw a javascript error, see https://github.com/robertkrimen/otto/issues/17
+func jsException(vm *Motto, errorType, msg string) {
+    value, _ := vm.Call("new " + errorType, nil, msg)
+    panic(value)
 }
