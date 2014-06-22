@@ -1,5 +1,7 @@
 # motto
 
+[![Build Status](https://travis-ci.org/ddliu/motto.png)](https://travis-ci.org/ddliu/motto)
+
 Modular [otto](https://github.com/robertkrimen/otto)
 
 Motto provide a module environment to run javascript file in golang.
