@@ -44,6 +44,57 @@ func (this *Motto) AddModule(filename string, module *Module) {
     this.modules[filename] = module
 }
 
+func (this *Motto) ResolveModuleId(name string) (id string, filename string, err error) {
+    m, ok := this.modules[name]
+    if ok {
+        return m.Id, m.Filename, nil
+    }
+
+    if name == "" {
+        return "", "", errors.New("Empty module name")
+    }
+
+    // file path
+    if name[0] == '.' || name[0] == '/' {
+        filename, err := filepath.Abs(name)
+        if err != nil {
+            return "", "", err
+        }
+
+        ok, err := isDir(filename)
+        if err != nil {
+            return "", "", err
+        }
+
+        if ok {
+            // has package.json
+            packageJsonFilename := filepath.Join(filename, "package.json")
+            ok, err := isFile(packageJsonFilename)
+
+            if err != nil {
+                return "", "", err
+            }
+
+            if ok {
+                index, err := parsePackageJsonIndex(packageJsonFilename)
+                if err != nil {
+                    return "", "", err
+                }
+
+                return filename, filepath.Join(filename, index), nil
+            }
+
+            // todo
+            // return filename, 
+
+        }
+
+        return filename, filename, nil
+    }
+
+    return "", "", nil
+}
+
 type Module struct {
     Id string
     Filename string
