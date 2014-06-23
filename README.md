@@ -61,7 +61,7 @@ func main() {
 }
 ```
 
-You can also install the motto command line tool to run it derectly:
+You can also install the motto command line tool to run it directly:
 
 ```bash
 go install github.com/ddliu/motto/motto
@@ -70,6 +70,8 @@ motto path/to/index.js
 
 ## TODO
 
+- Make it capable with Nodejs
+- Add interface to inject core module
 - More tests
 
 ## Changelog

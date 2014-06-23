@@ -1,5 +1,5 @@
 console.log("load sort.js");
-var _ = require('underscore.js');
+var _ = require('./underscore.js');
 function sort(data) {
     return _.sortBy(data, function(item) {
         return item.weight;
