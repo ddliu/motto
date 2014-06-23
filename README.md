@@ -61,7 +61,7 @@ func main() {
 }
 ```
 
-You can also install the motto command line tool to run it derectly:
+You can also install the motto command line tool to run it directly:
 
 ```bash
 go install github.com/ddliu/motto/motto

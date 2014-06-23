@@ -1,5 +1,5 @@
 console.log("load data.js");
-var helper = require('helper.js');
+var helper = require('./helper.js');
 
 helper.echo('load helper.js in data.js');
 module.exports = [
