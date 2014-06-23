@@ -70,6 +70,8 @@ motto path/to/index.js
 
 ## TODO
 
+- Make it capable with Nodejs
+- Add interface to inject core module
 - More tests
 
 ## Changelog
