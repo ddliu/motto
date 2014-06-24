@@ -31,10 +31,10 @@ func isFile(path string) (bool, error) {
 }
 
 type packageInfo struct {
-    Index string `json:"index"`
+    Main string `json:"main"`
 }
 
-func parsePackageJsonIndex(path string) (string, error) {
+func parsePackageEntryPoint(path string) (string, error) {
     bytes, err := ioutil.ReadFile(path)
     if err != nil {
         return "", err
@@ -46,5 +46,11 @@ func parsePackageJsonIndex(path string) (string, error) {
         return "", err
     }
 
-    return info.Index, nil
+    return info.Main, nil
+}
+
+// Throw a javascript error, see https://github.com/robertkrimen/otto/issues/17
+func jsException(vm *Motto, errorType, msg string) {
+    value, _ := vm.Call("new " + errorType, nil, msg)
+    panic(value)
 }
