@@ -4,7 +4,7 @@
 
 Modular [otto](https://github.com/robertkrimen/otto)
 
-Motto provide a module environment to run javascript file in golang.
+Motto provide a Nodejs like module environment to run javascript files in golang.
 
 ## Installation
 
@@ -68,10 +68,20 @@ go install github.com/ddliu/motto/motto
 motto path/to/index.js
 ```
 
+## Nodejs Module Capable
+
+The module environment is almost capable with Nodejs [spec](http://nodejs.org/api/modules.html).
+
+Some Nodejs modules(without core module dependencies) can be used directly in Motto.
+
+## Create Core Module
+
+You can implement a Nodejs module in Motto and use it in your javascript file.
+
+Refer to the test file for more details.
+
 ## TODO
 
-- Make it capable with Nodejs
-- Add interface to inject core module
 - More tests
 
 ## Changelog
@@ -79,3 +89,7 @@ motto path/to/index.js
 ### v0.1.0 (2014-06-22)
 
 Initial release
+
+### v0.2.0 (2014-06-24)
+
+Make module capable with Nodejs

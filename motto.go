@@ -11,6 +11,7 @@ import (
     "errors"
     "io/ioutil"
     "path/filepath"
+    // "fmt"
 )
 
 type Motto struct {
@@ -21,6 +22,14 @@ type Motto struct {
 
 // Run a js file as a module
 func (this *Motto) RunModule(name string) (otto.Value, error) {
+
+    // if name is a file, convert it to the absolute path.
+    // Because it might not be recognized by Module.FindModule
+    if ok, _ := isFile(name); ok {
+        if absPath, err := filepath.Abs(name); err == nil {
+            name = absPath
+        }
+    }
     baseModule := &Module {
         Id: ".",
         Filename: ".",
@@ -36,6 +45,7 @@ func (this *Motto) GetModule(id string) (ModuleInterface, bool) {
     return module, ok
 }
 
+// Check if specified module id exists
 func (this *Motto) HasModule(id string) bool {
     _, ok := this.modules[id]
 
@@ -187,12 +197,19 @@ func (this *Module) FindModule(name string) (ModuleInterface, error) {
     var paths []string
     // path
     if name[0] == '.' || name[0] == '/' {
+        if name[0] == '.' {
+            name = filepath.Join(filepath.Dir(this.Filename), name)
+        }
         if !filepath.IsAbs(name) {
             if name, err = filepath.Abs(name); err != nil {
                 return nil, err
             }
         }
-        paths = append(paths, name, name + ".js", name + ".json")
+        paths = append(paths, name)
+        ext := filepath.Ext(name)
+        if ext != ".js" && ext != ".json" {
+            paths = append(paths, name + ".js", name + ".json")
+        }
     } else if module, ok := this.vm.GetModule(name); ok {
         return module, nil
     } else {
@@ -204,6 +221,7 @@ func (this *Module) FindModule(name string) (ModuleInterface, error) {
             paths = append(paths, filepath.Join(v, name))
         }
     }
+
 
     for _, v := range paths {
         ok, err := isDir(v)
@@ -235,11 +253,18 @@ func (this *Module) FindModule(name string) (ModuleInterface, error) {
             }, nil
         }
 
-        return &Module {
-            Id: v,
-            Filename: v,
-            vm: this.vm,
-        }, nil
+        ok, err = isFile(v)
+        if err != nil {
+            return nil, err
+        }
+
+        if ok {
+            return &Module {
+                Id: v,
+                Filename: v,
+                vm: this.vm,
+            }, nil
+        }
     }
 
     return nil, errors.New("Module not found: " + name)
@@ -247,10 +272,12 @@ func (this *Module) FindModule(name string) (ModuleInterface, error) {
 
 // Run module by name in the motto module environment.
 func Run(name string) (*Motto, otto.Value, error) {
-    name, _ = filepath.Abs(name)
     vm := &Motto {otto.New(), nil, nil}
     v, err := vm.RunModule(name)
 
     return vm, v, err
 }
 
+func New() *Motto {
+    return &Motto {otto.New(), nil, nil}
+}
