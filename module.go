@@ -12,7 +12,7 @@ type ModuleLoader struct {
 }
 
 // Node capable module implement, see: http://nodejs.org/api/modules.html
-type Module struct {
+type FileModule struct {
     Id string
     Filename string
     Loaded bool
@@ -197,4 +197,70 @@ func (this *Module) FindModule(name string) (ModuleInterface, error) {
     }
 
     return nil, errors.New("Module not found: " + name)
+}
+
+func FindFileModule(name, pwd string, paths []string) (string, error) {
+    var err error
+    if len(name) == 0 {
+        return "", errors.New("Empty module name")
+    }
+
+    var choices []string
+    if name[0] == "." || name[0] == "/" {
+        if name[0] == "." {
+            name = filepath.Join(pwd, name)
+        }
+
+        choices = append(choices, name)
+        ext := filepath.Ext(name)
+        if ext != ".js" && ext != ".json" {
+            choices = append(choices, name + ".js", name + ".json")
+        }
+    } else {
+        if pwd != "" {
+            choices = append(choices, filepath.Join(pwd, "node_modules", name))
+        }
+
+        for _, v := range paths {
+            choices = append(choices, filepath.Join(v), name)
+        }
+    }
+
+    for _, v := range choices {
+        ok, err := isDir(v)
+        if err != nil {
+            return "", err
+        }
+
+        if ok {
+            packageJsonFilename := filepath.Join(v, "package.json")
+            ok, err := isFile(packageJsonFilename)
+            if err != nil {
+                return "", err
+            }
+
+            var entryPoint string
+            if ok {
+                entryPoint, err = parsePackageEntryPoint(packageJsonFilename)
+                if err != nil {
+                    return "", err
+                }
+            } else {
+                entryPoint = "./index.js"
+            }
+
+            return filepath.Abs(filepath.Join(v, entryPoint))
+        }
+
+        ok, err = isFile(v)
+        if err != nil {
+            return "", err
+        }
+
+        if ok {
+            return filepath.Abs(v)
+        }
+    }
+
+    return "", errors.New("Module not found: " + name)
 }

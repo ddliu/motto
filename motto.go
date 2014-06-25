@@ -16,8 +16,37 @@ import (
 
 type Motto struct {
     *otto.Otto
+    modules map[string]ModuleLoader
     modules map[string]ModuleInterface
+
+    moduleCache map[string]otto.Value
     paths []string
+}
+
+func (this *Motto) Require(id, pwd string) (otto.Value, error) {
+    cache, ok := this.moduleCache[id]
+    if ok {
+        return cache, nil
+    }
+
+    loader, ok := this.modules[id]
+    if !ok {
+        loader, ok = globalModules[id]
+    }
+
+    if loader != nil {
+        value, err := loader(this)
+        if err != nil {
+            return otto.UndefinedValue(), err
+        }
+
+        this.moduleCache[id] = value
+        return value, nil
+    }
+
+    filename, err := FindFileModule(id, "", this.paths)
+
+    module, err := FindModule(id, pwd)
 }
 
 // Run a js file as a module
