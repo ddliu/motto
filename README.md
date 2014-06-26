@@ -40,22 +40,51 @@ go install github.com/ddliu/motto/motto
 motto path/to/index.js
 ```
 
-## Module
+## Modules
 
 The module environment is almost capable with Nodejs [spec](http://nodejs.org/api/modules.html).
 
 Some Nodejs modules(without core module dependencies) can be used directly in Motto.
 
+## Addons
 
-## Create Core Module
+Motto can be extended with addons, below is an example addon which implement part of the "fs" module of Nodejs:
 
-You can implement a Nodejs module in Motto and use it in your javascript file.
+```
+package fs
 
-Refer to the test file for more details.
+import (
+    "github.com/ddliu/motto"
+    "github.com/robertkrimen/otto"
+)
 
-## TODO
+func fsModuleLoader(vm *motto.Motto) (otto.Value, error) {
+    fs, _ := vm.Object(`({})`)
+    fs.Set("readFileSync", func(call otto.FunctionCall) otto.Value {
+        filename, _ := call.Argument(0).ToString()
+        bytes, err := ioutil.ReadFile(filename)
+        if err != nil {
+            return otto.UndefinedValue()
+        }
 
-- More tests
+        v, _ := call.Otto.ToValue(string(bytes))
+        return v
+    })
+
+    return vm.ToValue(fs)
+}
+
+func init() {
+    motto.AddModule("fs", fsModuleLoader)
+}
+```
+
+After import this package, you can `require` it directly in your js file: 
+
+```
+var fs = require('fs');
+var content = fs.readFileSync('/path/to/data');
+```
 
 ## Benchmark && Optimize
 
@@ -142,3 +171,11 @@ Initial release
 ### v0.2.0 (2014-06-24)
 
 Make module capable with Nodejs
+
+### v0.3.0 (2014-06-26)
+
+Rewrite module.
+
+Make it easier to write addons.
+
+Add underscore addon as an example.
