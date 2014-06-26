@@ -8,24 +8,31 @@ package motto
 
 import (
     "github.com/robertkrimen/otto"
-    "errors"
-    "io/ioutil"
     "path/filepath"
     // "fmt"
 )
 
+var globalModules map[string]ModuleLoader = make(map[string]ModuleLoader)
+var globalPaths []string
+
 type Motto struct {
     *otto.Otto
     modules map[string]ModuleLoader
-    modules map[string]ModuleInterface
-
-    moduleCache map[string]otto.Value
     paths []string
+    moduleCache map[string]otto.Value
 }
 
+func (this *Motto) Run(name string) (otto.Value, error) {
+    if ok, _ := isFile(name); ok {
+        name, _ = filepath.Abs(name)
+    }
+
+    return this.Require(name, ".")
+}
+
+// Require a module with cache
 func (this *Motto) Require(id, pwd string) (otto.Value, error) {
-    cache, ok := this.moduleCache[id]
-    if ok {
+    if cache, ok := this.moduleCache[id]; ok {
         return cache, nil
     }
 
@@ -44,76 +51,58 @@ func (this *Motto) Require(id, pwd string) (otto.Value, error) {
         return value, nil
     }
 
-    filename, err := FindFileModule(id, "", this.paths)
-
-    module, err := FindModule(id, pwd)
-}
-
-// Run a js file as a module
-func (this *Motto) RunModule(name string) (otto.Value, error) {
-
-    // if name is a file, convert it to the absolute path.
-    // Because it might not be recognized by Module.FindModule
-    if ok, _ := isFile(name); ok {
-        if absPath, err := filepath.Abs(name); err == nil {
-            name = absPath
-        }
-    }
-    baseModule := &Module {
-        Id: ".",
-        Filename: ".",
-        vm: this,
+    filename, err := FindFileModule(id, pwd, append(this.paths, globalPaths...))
+    if err != nil {
+        return otto.UndefinedValue(), err
     }
 
-    return baseModule.Require(name)
-}
+    // resove id
+    id = filename
 
-// Get a registered module by id.
-func (this *Motto) GetModule(id string) (ModuleInterface, bool) {
-    module, ok := this.modules[id]
-    return module, ok
-}
-
-// Check if specified module id exists
-func (this *Motto) HasModule(id string) bool {
-    _, ok := this.modules[id]
-
-    return ok
-}
-
-func (this *Motto) FindModule(name string) (ModuleInterface, error) {
-    baseModule := &Module {
-        Id: "",
-        Filename: "",
-        vm: this,
+    if cache, ok := this.moduleCache[id]; ok {
+        return cache, nil
     }
 
-    return baseModule.FindModule(name)
-}
+    v, err := CreateLoaderFromFile(id)(this)
 
-// Add new modules to current vm.
-func (this *Motto) AddModule(modules ...ModuleInterface) {
-    if this.modules == nil {
-        this.modules = make(map[string]ModuleInterface)
+    if err != nil {
+        return otto.UndefinedValue(), err
     }
 
-    for _, module := range modules {
-        this.modules[module.GetId()] = module
-    }
+    // cache
+    this.moduleCache[id] = v
+
+    return v, nil
 }
 
+// Add a new module to current vm.
+func (this *Motto) AddModule(id string, loader ModuleLoader) {
+    this.modules[id] = loader
+}
+
+
+// Add paths to search for modules.
 func (this *Motto) AddPath(paths ...string) {
     this.paths = append(this.paths, paths...)
 }
 
+// Register a global module
+func AddModule(id string, m ModuleLoader) {
+    globalModules[id] = m
+}
+
+func AddPath(paths ...string) {
+    globalPaths = append(globalPaths, paths...)
+}
+
 // Run module by name in the motto module environment.
 func Run(name string) (*Motto, otto.Value, error) {
-    vm := &Motto {otto.New(), nil, nil}
-    v, err := vm.RunModule(name)
+    vm := New()
+    v, err := vm.Run(name)
 
     return vm, v, err
 }
 
 func New() *Motto {
-    return &Motto {otto.New(), nil, nil}
+    return &Motto{otto.New(), make(map[string]ModuleLoader), nil, make(map[string]otto.Value)}
 }

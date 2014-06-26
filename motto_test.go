@@ -32,37 +32,11 @@ func TestNpmModule(t *testing.T) {
     }
 }
 
-type testModuleFS struct {
-    vm *Motto
-}
-
-func (this *testModuleFS) GetId() string {
-    return "fs"
-}
-
-func (this *testModuleFS) GetValue() (otto.Value, error) {
-    fs, _ := this.vm.Object(`({})`)
-    fs.Set("readFileSync", this.readFileSync)
-    return this.vm.ToValue(fs)
-}
-
-func (this *testModuleFS) readFileSync(call otto.FunctionCall) otto.Value {
-    filename, _ := call.Argument(0).ToString()
-    bytes, err := ioutil.ReadFile(filename)
-    if err != nil {
-        return otto.UndefinedValue()
-    }
-
-    v, _ := call.Otto.ToValue(string(bytes))
-    return v
-}
-
-
 func TestCoreModule(t *testing.T) {
     vm := New()
-    vm.AddModule(&testModuleFS{vm})
+    vm.AddModule("fs", fsModuleLoader)
 
-    v, err := vm.RunModule("tests/core_module_test.js")
+    v, err := vm.Run("tests/core_module_test.js")
     if err != nil {
         t.Error(err)
     }
@@ -71,4 +45,20 @@ func TestCoreModule(t *testing.T) {
     if s != "cat" {
         t.Error("core module test failed: ", s, "!=", "cat")
     }
+}
+
+func fsModuleLoader(vm *Motto) (otto.Value, error) {
+    fs, _ := vm.Object(`({})`)
+    fs.Set("readFileSync", func(call otto.FunctionCall) otto.Value {
+        filename, _ := call.Argument(0).ToString()
+        bytes, err := ioutil.ReadFile(filename)
+        if err != nil {
+            return otto.UndefinedValue()
+        }
+
+        v, _ := call.Otto.ToValue(string(bytes))
+        return v
+    })
+
+    return vm.ToValue(fs)
 }
