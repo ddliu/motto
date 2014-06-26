@@ -1,3 +1,7 @@
+// Copyright 2014 dong<ddliuhb@gmail.com>.
+// Licensed under the MIT license.
+// 
+// Underscore addon for Motto
 package underscore
 
 import (

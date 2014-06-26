@@ -50,7 +50,7 @@ Some Nodejs modules(without core module dependencies) can be used directly in Mo
 
 Motto can be extended with addons, below is an example addon which implement part of the "fs" module of Nodejs:
 
-```
+```go
 package fs
 
 import (
@@ -81,14 +81,19 @@ func init() {
 
 After import this package, you can `require` it directly in your js file: 
 
-```
+```js
 var fs = require('fs');
 var content = fs.readFileSync('/path/to/data');
 ```
 
-## Benchmark && Optimize
+## Nodejs in Golang?
 
-Optimize can be done based on the following benchmark
+[nodego](https://github.com/ddliu/nodego) implements some features and core modules
+of Nodejs.
+
+## Performance
+
+Simple benchmark shows below for furthur performance optimize:
 
 ```bash
 strace -c -Ttt motto tests/index.js

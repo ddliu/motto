@@ -1,3 +1,7 @@
+// Copyright 2014 dong<ddliuhb@gmail.com>.
+// Licensed under the MIT license.
+// 
+// Motto - Modular Javascript environment.
 package motto
 
 import (

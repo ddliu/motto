@@ -1,9 +1,7 @@
 // Copyright 2014 dong<ddliuhb@gmail.com>.
 // Licensed under the MIT license.
 // 
-// Motto - Modular otto
-// 
-// Motto wraps otto to provide a Nodejs like module environment.
+// Motto - Modular Javascript environment.
 package motto
 
 import (
@@ -12,16 +10,29 @@ import (
     // "fmt"
 )
 
+// Globally registered modules
 var globalModules map[string]ModuleLoader = make(map[string]ModuleLoader)
+
+// Globally registered paths (paths to search for modules)
 var globalPaths []string
 
+// The modular vm environment
 type Motto struct {
+    // Motto is based on otto
     *otto.Otto
+
+    // Modules that registered for current vm
     modules map[string]ModuleLoader
+
+    // Location to search for modules
     paths []string
+
+    // Onece a module is required by vm, the exported value is cached for further
+    // use.
     moduleCache map[string]otto.Value
 }
 
+// Run a module or file
 func (this *Motto) Run(name string) (otto.Value, error) {
     if ok, _ := isFile(name); ok {
         name, _ = filepath.Abs(name)
@@ -75,7 +86,7 @@ func (this *Motto) Require(id, pwd string) (otto.Value, error) {
     return v, nil
 }
 
-// Add a new module to current vm.
+// Register a new module to current vm.
 func (this *Motto) AddModule(id string, loader ModuleLoader) {
     this.modules[id] = loader
 }
@@ -91,6 +102,7 @@ func AddModule(id string, m ModuleLoader) {
     globalModules[id] = m
 }
 
+// Register global path.
 func AddPath(paths ...string) {
     globalPaths = append(globalPaths, paths...)
 }
@@ -103,6 +115,7 @@ func Run(name string) (*Motto, otto.Value, error) {
     return vm, v, err
 }
 
+// Create a motto vm instance.
 func New() *Motto {
     return &Motto{otto.New(), make(map[string]ModuleLoader), nil, make(map[string]otto.Value)}
 }

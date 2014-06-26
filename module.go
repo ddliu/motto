@@ -1,3 +1,7 @@
+// Copyright 2014 dong<ddliuhb@gmail.com>.
+// Licensed under the MIT license.
+// 
+// Motto - Modular Javascript environment.
 package motto
 
 import (
@@ -7,10 +11,18 @@ import (
     "errors"
 )
 
+// ModuleLoader is declared to load a module.
 type ModuleLoader func(*Motto) (otto.Value, error)
 
+// Create module loader from javascript source code. 
+// 
+// When the loader is called, the javascript source is executed in Motto.
+// 
+// "pwd" indicates current working directory, which might be used to search for 
+// modules.
 func CreateLoaderFromSource(source, pwd string) ModuleLoader {
     return func (vm *Motto) (otto.Value, error) {
+        // Wraps the source to create a module environment
         source = "(function(module) {var require = module.require;var exports = module.exports;\n" + source + "\n})"
 
         // Provide the "require" method in the module scope.
@@ -47,6 +59,9 @@ func CreateLoaderFromSource(source, pwd string) ModuleLoader {
     }
 }
 
+// Create module loader from javascript file.
+// 
+// Filename can be a javascript file or a json file.
 func CreateLoaderFromFile(filename string) ModuleLoader {
     return func (vm *Motto) (otto.Value, error) {
         source, err := ioutil.ReadFile(filename)
@@ -66,7 +81,15 @@ func CreateLoaderFromFile(filename string) ModuleLoader {
     }
 }
 
-// Find a file module by name
+// Find a file module by name.
+// 
+// If name starts with "." or "/", we search the module in the according locations
+// (name and name.js and name.json).
+// 
+// Otherwise we search the module in the "node_modules" sub-directory of "pwd" and
+// "paths"
+// 
+// It basicly follows the rules of Node.js module api: http://nodejs.org/api/modules.html
 func FindFileModule(name, pwd string, paths []string) (string, error) {
     if len(name) == 0 {
         return "", errors.New("Empty module name")
