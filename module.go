@@ -41,7 +41,7 @@ func CreateLoaderFromSource(source, pwd string) ModuleLoader {
         jsModule.Set("require", jsRequire)
         jsExports, _ := jsModule.Get("exports")
 
-        // Run the module source, with "jsModule" as the "module" varaible, "jsExports" as "this"(Nodejs capable).
+        // Run the module source, with "jsModule" as the "module" variable, "jsExports" as "this"(Nodejs capable).
         moduleReturn, err := vm.Call(source, jsExports, jsModule)
         if err != nil {
             return otto.UndefinedValue(), err
