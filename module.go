@@ -96,7 +96,7 @@ func FindFileModule(name, pwd string, paths []string) (string, error) {
     }
 
     var choices []string
-    if name[0] == '.' || name[0] == '/' {
+    if name[0] == '.' || filepath.IsAbs(name) {
         if name[0] == '.' {
             name = filepath.Join(pwd, name)
         }
