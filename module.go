@@ -101,11 +101,11 @@ func FindFileModule(name, pwd string, paths []string) (string, error) {
 			name = filepath.Join(pwd, name)
 		}
 
-		choices = append(choices, name)
 		ext := filepath.Ext(name)
 		if ext != ".js" && ext != ".json" {
 			choices = append(choices, name+".js", name+".json")
 		}
+		choices = append(choices, name)
 	} else {
 		if pwd != "" {
 			choices = append(choices, filepath.Join(pwd, "node_modules", name))
