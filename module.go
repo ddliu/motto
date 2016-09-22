@@ -95,24 +95,29 @@ func FindFileModule(name, pwd string, paths []string) (string, error) {
 		return "", errors.New("Empty module name")
 	}
 
+	add := func(choices []string, name string) []string {
+		ext := filepath.Ext(name)
+		if ext != ".js" && ext != ".json" {
+			choices = append(choices, name+".js", name+".json")
+		}
+		choices = append(choices, name)
+		return choices
+	}
+
 	var choices []string
 	if name[0] == '.' || filepath.IsAbs(name) {
 		if name[0] == '.' {
 			name = filepath.Join(pwd, name)
 		}
 
-		ext := filepath.Ext(name)
-		if ext != ".js" && ext != ".json" {
-			choices = append(choices, name+".js", name+".json")
-		}
-		choices = append(choices, name)
+		choices = add(choices, name)
 	} else {
 		if pwd != "" {
-			choices = append(choices, filepath.Join(pwd, "node_modules", name))
+			choices = add(choices, filepath.Join(pwd, "node_modules", name))
 		}
 
 		for _, v := range paths {
-			choices = append(choices, filepath.Join(v), name)
+			choices = add(choices, filepath.Join(v, name))
 		}
 	}
 
