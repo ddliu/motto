@@ -21,16 +21,16 @@ type ModuleLoader func(*Motto) (otto.Value, error)
 //
 // "pwd" indicates current working directory, which might be used to search for
 // modules.
-func CreateLoaderFromSource(source, pwd string) ModuleLoader {
+func CreateLoaderFromSource(source, pwd string, filename string) ModuleLoader {
 	return func(vm *Motto) (otto.Value, error) {
 		// Wraps the source to create a module environment
-		source = "(function(module) {var require = module.require;var exports = module.exports;var __dirname = module.__dirname;\n" + source + "\n})"
+		source = "(function(module) {var require = module.require;var exports = module.exports;var __dirname = module.__dirname;var __filename = module.__filename;\n" + source + "\n})"
 
 		// Provide the "require" method in the module scope.
 		jsRequire := func(call otto.FunctionCall) otto.Value {
 			jsModuleName := call.Argument(0).String()
 
-			moduleValue, err := vm.Require(jsModuleName, pwd)
+			moduleValue, err := vm.Require(jsModuleName, pwd, true)
 			if err != nil {
 				jsException(vm, "Error", "motto: "+err.Error())
 			}
@@ -41,6 +41,8 @@ func CreateLoaderFromSource(source, pwd string) ModuleLoader {
 		jsModule, _ := vm.Object(`({exports: {}})`)
 		jsModule.Set("require", jsRequire)
 		jsModule.Set("__dirname", pwd)
+		jsModule.Set("__filename", filename)
+
 		jsExports, _ := jsModule.Get("exports")
 
 		// Run the module source, with "jsModule" as the "module" variable, "jsExports" as "this"(Nodejs capable).
@@ -79,7 +81,7 @@ func CreateLoaderFromFile(filename string) ModuleLoader {
 
 		pwd := filepath.Dir(filename)
 
-		return CreateLoaderFromSource(string(source), pwd)(vm)
+		return CreateLoaderFromSource(string(source), pwd, filename)(vm)
 	}
 }
 

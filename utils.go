@@ -7,8 +7,17 @@ package motto
 import (
 	"encoding/json"
 	"io/ioutil"
+	"io"
 	"os"
+	md5base "crypto/md5"
 )
+
+func md5(data string) string {
+	h := md5base.New()
+	io.WriteString(h,data)
+
+	return string(h.Sum(nil))
+}
 
 func isDir(path string) (bool, error) {
 	fi, err := os.Stat(path)
