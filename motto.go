@@ -7,7 +7,7 @@ package motto
 import (
 	"path/filepath"
 	"sync"
-
+    "errors"
 	"github.com/robertkrimen/otto"
 )
 
@@ -41,15 +41,23 @@ type Motto struct {
 
 // Run a module or file
 func (m *Motto) Run(name string) (otto.Value, error) {
-	if ok, _ := isFile(name); ok {
+    var isFilePath bool
+    if isFilePath, _ := isFile(name); isFilePath {
 		name, _ = filepath.Abs(name)
 	}
 
-	return m.Require(name, ".")
+	return m.Require(name, ".", isFilePath)
 }
 
 // Require a module with cache
-func (m *Motto) Require(id, pwd string) (otto.Value, error) {
+func (m *Motto) Require(id, pwd string, isFilePath bool) (otto.Value, error) {
+    var source string
+
+    if !isFilePath {
+        source = id
+        id = md5(id)
+    }
+
 	if cache, ok := m.cachedModule(id); ok {
 		return cache, nil
 	}
@@ -69,26 +77,39 @@ func (m *Motto) Require(id, pwd string) (otto.Value, error) {
 		return v, nil
 	}
 
-	filename, err := FindFileModule(id, pwd, append(m.paths, globalPaths...))
-	if err != nil {
-		return otto.UndefinedValue(), err
-	}
+    if len(source) > 0 {
+        v, err := CreateLoaderFromSource(source, pwd, "")(m)
 
-	// resove id
-	id = filename
+        if err != nil {
+            return otto.UndefinedValue(), err
+        }
 
-	if cache, ok := m.cachedModule(id); ok {
-		return cache, nil
-	}
+        m.addCachedModule(id, v)
+        return v, nil
+    } else {
+        filename, err := FindFileModule(id, pwd, append(m.paths, globalPaths...))
+        if err != nil {
+            return otto.UndefinedValue(), err
+        }
 
-	v, err := CreateLoaderFromFile(id)(m)
+        // resove id
+        id = filename
 
-	if err != nil {
-		return otto.UndefinedValue(), err
-	}
+        if cache, ok := m.cachedModule(id); ok {
+            return cache, nil
+        }
 
-	m.addCachedModule(id, v)
-	return v, nil
+        v, err := CreateLoaderFromFile(id)(m)
+
+        if err != nil {
+            return otto.UndefinedValue(), err
+        }
+
+        m.addCachedModule(id, v)
+        return v, nil
+    }
+
+    return otto.UndefinedValue(), errors.New("Not found data for require")
 }
 
 func (m *Motto) addCachedModule(id string, v otto.Value) {
