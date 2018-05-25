@@ -41,11 +41,11 @@ type Motto struct {
 
 // Run a module or file
 func (m *Motto) Run(name string) (otto.Value, error) {
-    var isFilePath bool
-    if isFilePath, _ := isFile(name); isFilePath {
+	isFilePath, _ := isFile(name);
+    if  isFilePath {
 		name, _ = filepath.Abs(name)
 	}
-
+	
 	return m.Require(name, ".", isFilePath)
 }
 
