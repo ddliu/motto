@@ -104,6 +104,13 @@ func (m *Motto) cachedModule(id string) (otto.Value, bool) {
 	return v, ok
 }
 
+// ClearModule clear all registered module from current vm
+func (m *Motto) ClearModule() {
+	m.moduleCacheMu.Lock()
+	m.moduleCache = make(map[string]otto.Value)
+	m.moduleCacheMu.Unlock()
+}
+
 // AddModule registers a new module to current vm.
 func (m *Motto) AddModule(id string, l ModuleLoader) {
 	m.modulesMu.Lock()
