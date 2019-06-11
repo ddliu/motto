@@ -6,10 +6,11 @@ package motto
 
 import (
 	"errors"
-	"github.com/robertkrimen/otto"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
+
+	"github.com/robertkrimen/otto"
 )
 
 // ModuleLoader is declared to load a module.
@@ -21,10 +22,11 @@ type ModuleLoader func(*Motto) (otto.Value, error)
 //
 // "pwd" indicates current working directory, which might be used to search for
 // modules.
-func CreateLoaderFromSource(source, pwd string) ModuleLoader {
+func CreateLoaderFromSource(source, filename string) ModuleLoader {
+	pwd := filepath.Dir(filename)
 	return func(vm *Motto) (otto.Value, error) {
 		// Wraps the source to create a module environment
-		source = "(function(module) {var require = module.require;var exports = module.exports;var __dirname = module.__dirname;\n" + source + "\n})"
+		source = "(function(module) {var require = module.require;var exports = module.exports;var __dirname = module.__dirname;" + source + "\n})"
 
 		// Provide the "require" method in the module scope.
 		jsRequire := func(call otto.FunctionCall) otto.Value {
@@ -44,7 +46,30 @@ func CreateLoaderFromSource(source, pwd string) ModuleLoader {
 		jsExports, _ := jsModule.Get("exports")
 
 		// Run the module source, with "jsModule" as the "module" variable, "jsExports" as "this"(Nodejs capable).
-		moduleReturn, err := vm.Call(source, jsExports, jsModule)
+		var src *otto.Script
+		var err error
+		var sourceMap string
+		if vm.SourceMapEnabled {
+			sourceMapFilename := filename + ".map"
+			if ok, _ := isFile(sourceMapFilename); ok {
+				if content, err := ioutil.ReadFile(sourceMapFilename); err == nil {
+					sourceMap = string(content)
+				}
+			}
+		}
+		if sourceMap != "" {
+			src, err = vm.CompileWithSourceMap(filename, source, sourceMap)
+		} else {
+			src, err = vm.Compile(filename, source)
+		}
+		if err != nil {
+			return otto.UndefinedValue(), err
+		}
+		srcValue, err := vm.Otto.Run(src)
+		if err != nil {
+			return otto.UndefinedValue(), err
+		}
+		moduleReturn, err := srcValue.Call(jsExports, jsModule)
 		if err != nil {
 			return otto.UndefinedValue(), err
 		}
@@ -77,9 +102,7 @@ func CreateLoaderFromFile(filename string) ModuleLoader {
 			return vm.Call("JSON.parse", nil, string(source))
 		}
 
-		pwd := filepath.Dir(filename)
-
-		return CreateLoaderFromSource(string(source), pwd)(vm)
+		return CreateLoaderFromSource(string(source), filename)(vm)
 	}
 }
 

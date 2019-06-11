@@ -25,6 +25,9 @@ type Motto struct {
 	// Motto is based on otto
 	*otto.Otto
 
+	// try to read source map
+	SourceMapEnabled bool
+
 	// Modules that registered for current vm
 	modules   map[string]ModuleLoader
 	modulesMu sync.RWMutex
