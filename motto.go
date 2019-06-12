@@ -25,6 +25,9 @@ type Motto struct {
 	// Motto is based on otto
 	*otto.Otto
 
+	// try to read source map
+	SourceMapEnabled bool
+
 	// Modules that registered for current vm
 	modules   map[string]ModuleLoader
 	modulesMu sync.RWMutex
@@ -102,6 +105,13 @@ func (m *Motto) cachedModule(id string) (otto.Value, bool) {
 	defer m.moduleCacheMu.RUnlock()
 	v, ok := m.moduleCache[id]
 	return v, ok
+}
+
+// ClearModule clear all registered module from current vm
+func (m *Motto) ClearModule() {
+	m.moduleCacheMu.Lock()
+	m.moduleCache = make(map[string]otto.Value)
+	m.moduleCacheMu.Unlock()
 }
 
 // AddModule registers a new module to current vm.
