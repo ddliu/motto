@@ -1,7 +1,7 @@
 language: go 
 
 go:
- - 1.1
+ - 1.6.x
  - tip
 
 before_install:
