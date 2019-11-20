@@ -36,6 +36,20 @@ func TestNpmModule(t *testing.T) {
 	}
 }
 
+func TestNodeModules(t *testing.T) {
+	_, v, err := Run("tests/node.js")
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	i, _ := v.ToInteger()
+
+	if i != 42 {
+		t.Error("node_modules test failed: ", i, "!=", 42)
+	}
+}
+
 func TestCoreModule(t *testing.T) {
 	vm := New()
 	vm.AddModule("fs", fsModuleLoader)
