@@ -5,9 +5,10 @@
 package motto
 
 import (
-	"github.com/robertkrimen/otto"
 	"io/ioutil"
 	"testing"
+
+	"github.com/robertkrimen/otto"
 )
 
 func TestModule(t *testing.T) {
@@ -65,4 +66,25 @@ func fsModuleLoader(vm *Motto) (otto.Value, error) {
 	})
 
 	return vm.ToValue(fs)
+}
+
+func TestDoubleLoadModule(t *testing.T) {
+	loader := CreateLoaderFromSource(`{
+		module.exports = "bar";
+	}`, "")
+
+	testLoad := func() {
+		vm := New()
+		vm.AddModule("foo", loader)
+		v, err := vm.Require("foo", ".")
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, _ := v.ToString()
+		if s != "bar" {
+			t.Errorf("expect bar, got %s", s)
+		}
+	}
+	testLoad()
+	testLoad()
 }

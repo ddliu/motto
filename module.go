@@ -26,7 +26,7 @@ func CreateLoaderFromSource(source, filename string) ModuleLoader {
 	pwd := filepath.Dir(filename)
 	return func(vm *Motto) (otto.Value, error) {
 		// Wraps the source to create a module environment
-		source = "(function(module) {var require = module.require;var exports = module.exports;var __dirname = module.__dirname;" + source + "\n})"
+		source := "(function(module) {var require = module.require;var exports = module.exports;var __dirname = module.__dirname;" + source + "\n})"
 
 		// Provide the "require" method in the module scope.
 		jsRequire := func(call otto.FunctionCall) otto.Value {
